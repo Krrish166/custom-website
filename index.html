@@ -11,7 +11,7 @@
 html,body{height:100%;margin:0;background:var(--bg);color-scheme:dark}
 body{background:radial-gradient(ellipse at 20% 0,#2a1238 0,transparent 55%),radial-gradient(ellipse at 90% 70%,#3a0f24 0,transparent 55%),var(--bg);color:var(--ink);font-family:var(--serif);font-size:1.3rem;line-height:1.65;overflow:hidden}
 #stars{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
-.slide{position:fixed;inset:0;overflow-y:auto;display:flex;padding:calc(3.5rem + env(safe-area-inset-top,0px)) 1.4rem calc(6rem + env(safe-area-inset-bottom,0px));text-align:center;opacity:0;visibility:hidden;transform:translateY(24px);transition:opacity .9s ease,transform .9s ease,visibility .9s}
+.slide{position:fixed;inset:0;overflow-y:auto;display:flex;padding:calc(3.5rem + env(safe-area-inset-top,0px)) 1.4rem calc(7.5rem + env(safe-area-inset-bottom,0px));text-align:center;opacity:0;visibility:hidden;transform:translateY(24px);transition:opacity .9s ease,transform .9s ease,visibility .9s}
 .slide.on{opacity:1;visibility:visible;transform:none}
 .in{margin:auto;max-width:640px;width:100%}
 .in.wide{max-width:900px}
@@ -53,6 +53,14 @@ button:focus-visible{outline:2px solid var(--rose);outline-offset:4px}
 .cat2.curl svg{transform:scale(.85,.6)}.cat2.curl .eyes{transform:scaleY(.12);transform-origin:100px 74px}
 .cat2.jump svg{animation:hop2 .7s 3}@keyframes hop2{40%{transform:translateY(-26px)}}
 #fix{animation:glow 2.6s ease-in-out infinite}@keyframes glow{50%{box-shadow:0 10px 60px rgba(224,96,126,.75)}}
+button:active{transform:scale(.94)}
+.spark{position:fixed;width:7px;height:7px;margin:-3px;border-radius:50%;background:#ffc2d1;box-shadow:0 0 10px #e0607e;pointer-events:none;z-index:70;animation:sp .8s ease-out forwards}
+@keyframes sp{to{transform:translate(var(--dx),var(--dy)) scale(.2);opacity:0}}
+.slide.on .in>*{animation:rise .9s cubic-bezier(.2,.7,.2,1) both}
+.slide.on .in>*:nth-child(2){animation-delay:.12s}.slide.on .in>*:nth-child(3){animation-delay:.24s}.slide.on .in>*:nth-child(4){animation-delay:.36s}.slide.on .in>*:nth-child(5){animation-delay:.48s}
+@keyframes rise{from{opacity:0;transform:translateY(22px)}}
+.slide.on .in>.cat.hop{animation:hop .6s}
+#snd{position:fixed;top:calc(.8rem + env(safe-area-inset-top,0px));left:.8rem;z-index:60;padding:.3rem .7rem;font-size:1rem}
 /* nav */
 #bar{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,#c93c62,#8a3fae);z-index:20;transition:width .6s ease}
 #dots{position:fixed;right:.9rem;top:50%;transform:translateY(-50%);z-index:20;display:flex;flex-direction:column;gap:.9rem}
@@ -183,6 +191,7 @@ button:focus-visible{outline:2px solid var(--rose);outline-offset:4px}
 </div></section>
 </main>
 
+<button id="snd" aria-pressed="true" aria-label="Sound on">🔊</button>
 <nav id="dots" aria-label="Pages"></nav>
 <div id="pn"><button id="back" disabled>Back</button><button id="next" class="warm">Next</button></div>
 
@@ -219,6 +228,33 @@ function step(){
 step();
 $('#openBtn').onclick=function(){$('#intro').classList.add('gone');started=true};
 
+// sounds + sparkles
+var AC=null,snd=true;
+function actx(){if(!AC){var C=window.AudioContext||window.webkitAudioContext;if(C)AC=new C()}if(AC&&AC.state==="suspended")AC.resume();return AC}
+function tone(f,d,ty,v,at,f2){var a=actx();if(!a||!snd)return;var t=a.currentTime+(at||0),o=a.createOscillator(),g=a.createGain();o.type=ty||"sine";o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v||.12,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(a.destination);o.start(t);o.stop(t+d+.05)}
+function arp(n,d,v,g){n.forEach(function(f,i){tone(f,d,"sine",v,i*g)})}
+var SND={click:function(){tone(660,.12,"sine",.12,0,440)},
+whoosh:function(){tone(300,.25,"triangle",.1,0,700)},
+chime:function(){tone(880,.6,"sine",.12);tone(1318,.8,"sine",.08,.08)},
+meow:function(){tone(600,.15,"triangle",.12,0,900);tone(900,.35,"triangle",.12,.15,450)},
+open:function(){arp([523,659,784,1046],.5,.12,.12)},
+fix:function(){arp([523,659,784,1046,1318],.7,.13,.1)},
+space:function(){tone(392,1.2,"sine",.1);tone(494,1.4,"sine",.08,.25)},
+intro:function(){arp([392,523,659],1.2,.1,.2)}};
+function burst(x,y){if(reduce)return;for(var k=0;k<10;k++){var d=document.createElement("div"),a=Math.PI*2*k/10,r=40+Math.random()*40;d.className="spark";d.style.left=x+"px";d.style.top=y+"px";d.style.setProperty("--dx",Math.cos(a)*r+"px");d.style.setProperty("--dy",Math.sin(a)*r+"px");document.body.appendChild(d);setTimeout(function(){d.remove()},900)}}
+document.addEventListener("click",function(e){
+  var b=e.target.closest("button");if(!b)return;
+  if(b.id==="snd"){snd=!snd;b.textContent=snd?"🔊":"🔇";b.setAttribute("aria-pressed",snd);b.setAttribute("aria-label",snd?"Sound on":"Sound off");if(snd)SND.click();return}
+  var id=b.id,cl=b.className,n="click";
+  if(id==="next"||id==="back")n="whoosh";
+  else if(id==="cat")n="meow";
+  else if(id==="env")n=b.classList.contains("open")?"click":"open";
+  else if(id==="fix"||id==="ready")n="fix";
+  else if(id==="space")n="space";
+  else if(id==="openBtn")n="intro";
+  else if(/\blan\b/.test(cl)||b.parentNode.id==="bd")n="chime";
+  SND[n]();burst(e.clientX||b.getBoundingClientRect().left+20,e.clientY||b.getBoundingClientRect().top+20);
+},true);
 // stars
 var c=$('#stars'),x=c.getContext('2d'),S=[],W,H;
 function size(){W=c.width=innerWidth;H=c.height=innerHeight;S=[];for(var k=0;k<Math.min(140,W/8);k++)S.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.3+.2,p:Math.random()*6,s:Math.random()*.4+.1})}
